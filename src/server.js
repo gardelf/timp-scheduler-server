@@ -81,13 +81,24 @@ wss.on('connection', (ws, req) => {
       console.log(`📨 Mensaje de ${clientType}:`, message.type);
       
       if (message.type === 'extract_request') {
-        store.extensions.forEach((ws) => {
-          ws.send(JSON.stringify({
-            type: 'extract_request',
-            requestId: message.requestId || uuidv4(),
-            timestamp: new Date().toISOString()
-          }));
+        console.log(`🔄 Reenviando extract_request a ${store.extensions.size} extensiones`);
+        let enviados = 0;
+        store.extensions.forEach((extensionWs) => {
+          if (extensionWs.readyState === WebSocket.OPEN) {
+            extensionWs.send(JSON.stringify({
+              type: 'extract_request',
+              requestId: message.requestId || uuidv4(),
+              timestamp: new Date().toISOString()
+            }));
+            enviados++;
+            console.log(`✅ extract_request enviado a extensión (${enviados}/${store.extensions.size})`);
+          } else {
+            console.log(`⚠️ Extensión no está OPEN, estado: ${extensionWs.readyState}`);
+          }
         });
+        if (enviados === 0) {
+          console.warn('⚠️ No hay extensiones conectadas para enviar extract_request');
+        }
       } else if (message.type === 'schedule_data') {
         const scheduleEntry = {
           id: uuidv4(),
