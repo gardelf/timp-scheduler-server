@@ -1,27 +1,108 @@
-📅 TIMP Scheduler
-Panel Central de Control
-Extensiones: 0
-Conexión: Desconectado
-🎮 Control
-📤 Extraer Horarios Ahora 🔄 Actualizar Datos 🗑️ Limpiar Historial
-📊 Estadísticas
-0
-Horarios Guardados
-0
-Horarios de Hoy
--
-Última Actualización
-⏰ Último Horario Extraído
-Esperando datos...
-📜 Historial de Horarios
-Fecha
-Clases
-Timestamp
-Acciones
-No hay datos
-📋 Consola de Eventos
-Sistema iniciado
-TIMP Scheduler v1.0 | Panel Central de Control
-×
-Detalles del Horario
-
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TIMP Scheduler</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-content">
+                <h1>📅 TIMP Scheduler</h1>
+                <p>Panel Central de Control</p>
+            </div>
+            <div class="status">
+                <div class="status-item">
+                    <span class="status-label">Extensiones:</span>
+                    <span class="status-value" id="extensionsCount">0</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Conexión:</span>
+                    <span class="status-badge" id="connectionStatus">Desconectado</span>
+                </div>
+            </div>
+        </header>
+        <main class="main">
+            <section class="section control-panel">
+                <h2>🎮 Control</h2>
+                <div class="controls">
+                    <button id="extractBtn" class="btn btn-primary">
+                        <span class="btn-icon">📤</span>
+                        Extraer Horarios Ahora
+                    </button>
+                    <button id="refreshBtn" class="btn btn-secondary">
+                        <span class="btn-icon">🔄</span>
+                        Actualizar Datos
+                    </button>
+                    <button id="clearBtn" class="btn btn-danger">
+                        <span class="btn-icon">🗑️</span>
+                        Limpiar Historial
+                    </button>
+                </div>
+            </section>
+            <section class="section stats">
+                <h2>📊 Estadísticas</h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalSchedules">0</div>
+                        <div class="stat-label">Horarios Guardados</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="todaySchedules">0</div>
+                        <div class="stat-label">Horarios de Hoy</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="lastUpdate">-</div>
+                        <div class="stat-label">Última Actualización</div>
+                    </div>
+                </div>
+            </section>
+            <section class="section latest-schedule">
+                <h2>⏰ Último Horario Extraído</h2>
+                <div id="latestScheduleContainer" class="schedule-container">
+                    <p class="empty-state">Esperando datos...</p>
+                </div>
+            </section>
+            <section class="section schedule-history">
+                <h2>📜 Historial de Horarios</h2>
+                <div class="table-container">
+                    <table class="schedule-table">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Clases</th>
+                                <th>Timestamp</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="scheduleTableBody">
+                            <tr>
+                                <td colspan="4" class="empty-state">No hay datos</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+            <section class="section log-console">
+                <h2>📋 Consola de Eventos</h2>
+                <div class="log-output" id="logOutput">
+                    <div class="log-entry log-info">Sistema iniciado</div>
+                </div>
+            </section>
+        </main>
+        <footer class="footer">
+            <p>TIMP Scheduler v1.0 | Panel Central de Control</p>
+        </footer>
+    </div>
+    <div id="detailsModal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close">&times;</span>
+            <h2>Detalles del Horario</h2>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+    <script src="/script.js"></script>
+</body>
+</html>
