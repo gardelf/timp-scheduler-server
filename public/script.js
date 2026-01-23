@@ -224,12 +224,13 @@ class TimPScheduler {
   }
   
   handleScheduleUpdate(data) {
-    if (data.success) {
+    // data es el scheduleEntry del servidor
+    if (data && data.id) {
       this.addLog(`✅ Horario guardado (ID: ${data.id})`, 'success');
       this.loadSchedules();
       this.loadStats();
     } else {
-      this.addLog(`❌ Error: ${data.error}`, 'error');
+      this.addLog(`❌ Error: datos inválidos`, 'error');
     }
   }
   
