@@ -1,0 +1,23 @@
+{
+  "name": "timp-scheduler-server",
+  "version": "1.0.0",
+  "description": "TIMP Scheduler - Servidor de extracción de horarios",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node src/server.js"
+  },
+  "keywords": [
+    "timp",
+    "scheduler",
+    "websocket"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "ws": "^8.14.2",
+    "uuid": "^9.0.0",
+    "sqlite3": "^5.1.6"
+  }
+}

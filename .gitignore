@@ -1,0 +1,15 @@
+node_modules/
+npm-debug.log
+*.log
+.DS_Store
+.env
+.env.local
+schedules.db
+schedules.db-shm
+schedules.db-wal
+data/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
