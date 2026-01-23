@@ -43,7 +43,7 @@ app.get('/api/stats', (req, res) => {
   res.json({
     success: true,
     stats: {
-      extensiones_conectadas: wsClients.size,
+      extensiones_conectadas: extensionClients.size,
       dashboards_conectados: dashboardClients.size,
       total_horarios_guardados: store.schedules.length,
       timestamp: new Date().toISOString()
@@ -74,31 +74,48 @@ const server = app.listen(PORT, () => {
 // ============================================
 
 const wss = new WebSocket.Server({ server });
-const wsClients = new Set();
+const extensionClients = new Set();
 const dashboardClients = new Set();
 
-wss.on('connection', (ws) => {
-  console.log('✅ Nuevo cliente WebSocket conectado');
-  wsClients.add(ws);
+wss.on('connection', (ws, req) => {
+  const url = req.url;
+  console.log(`✅ Nuevo cliente WebSocket conectado en: ${url}`);
+
+  // Determinar tipo de cliente por URL
+  if (url === '/ws/extension') {
+    extensionClients.add(ws);
+    console.log(`✅ Extensión registrada. Total extensiones: ${extensionClients.size}`);
+    
+    // Enviar confirmación de conexión
+    ws.send(JSON.stringify({
+      type: 'connected',
+      clientId: uuidv4()
+    }));
+  } else if (url === '/ws/dashboard') {
+    dashboardClients.add(ws);
+    console.log(`✅ Dashboard registrado. Total dashboards: ${dashboardClients.size}`);
+  } else {
+    // Conexión genérica (compatibilidad)
+    extensionClients.add(ws);
+    console.log(`✅ Cliente genérico registrado`);
+  }
 
   ws.on('message', (message) => {
     try {
       const data = JSON.parse(message);
       console.log('📨 Mensaje recibido:', data.type);
 
-      if (data.type === 'register_extension') {
-        console.log('✅ Extensión registrada');
-      } else if (data.type === 'register_dashboard') {
-        dashboardClients.add(ws);
-        console.log('✅ Dashboard registrado');
+      if (data.type === 'ping') {
+        // Responder al heartbeat
+        ws.send(JSON.stringify({ type: 'pong' }));
       } else if (data.type === 'schedule_data') {
         // Guardar los datos en memoria
         const scheduleData = {
           id: uuidv4(),
-          data: data.payload,
+          data: data.data,
           timestamp: new Date().toISOString(),
-          source: data.source || 'extension',
-          sourceId: data.sourceId || uuidv4()
+          source: 'extension',
+          sourceId: uuidv4()
         };
 
         store.schedules.push(scheduleData);
@@ -129,7 +146,7 @@ wss.on('connection', (ws) => {
   });
 
   ws.on('close', () => {
-    wsClients.delete(ws);
+    extensionClients.delete(ws);
     dashboardClients.delete(ws);
     console.log('❌ Cliente desconectado');
   });
