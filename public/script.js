@@ -145,7 +145,7 @@ class TimPScheduler {
     
     // Enviar por WebSocket
     const sent = this.sendMessage({
-      type: 'extract_today'
+      type: 'extract_request'
     });
     
     if (!sent) {
