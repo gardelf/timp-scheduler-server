@@ -142,14 +142,23 @@ app.get('/api/schedules', (req, res) => {
 });
 
 app.get('/api/schedules/today', (req, res) => {
-  const today = new Date().toISOString().split('T')[0];
-  const todaySchedules = store.schedules.filter(s => s.data.fecha === today);
-  res.json({
-    success: true,
-    fecha: today,
-    count: todaySchedules.length,
-    data: todaySchedules
-  });
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const todaySchedules = store.schedules.filter(s => s.data && s.data.fecha === today);
+    res.json({
+      success: true,
+      fecha: today,
+      count: todaySchedules.length,
+      data: todaySchedules
+    });
+  } catch (error) {
+    console.error('Error en /api/schedules/today:', error);
+    res.json({
+      success: false,
+      error: error.message,
+      data: []
+    });
+  }
 });
 
 app.get('/api/stats', (req, res) => {
