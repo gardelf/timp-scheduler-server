@@ -91,7 +91,10 @@ wss.on('connection', (ws, req) => {
       const message = JSON.parse(data.toString());
       console.log(`📨 Mensaje de ${clientType}: ${message.type}`);
       
-      if (message.type === 'extract_request') {
+      if (message.type === 'heartbeat') {
+        // Ignorar heartbeat, solo confirmar que se recibió
+        console.log(`💓 Heartbeat recibido de ${clientType}`);
+      } else if (message.type === 'extract_request') {
         console.log(`🔄 Reenviando extract_request a ${store.extensions.size} extensiones`);
         store.extensions.forEach((extWs) => {
           if (extWs.readyState === WebSocket.OPEN) {
