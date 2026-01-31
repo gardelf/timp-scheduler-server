@@ -74,8 +74,8 @@ const server = app.listen(PORT, () => {
 // ============================================
 
 const wss = new WebSocket.Server({ server });
-const wsClients = new Set();
-const dashboardClients = new Set();
+const wsClients = new Set();        // extensiones
+const dashboardClients = new Set(); // dashboards
 
 wss.on('connection', (ws) => {
   console.log('✅ Nuevo cliente WebSocket conectado');
@@ -86,13 +86,34 @@ wss.on('connection', (ws) => {
       const data = JSON.parse(message);
       console.log('📨 Mensaje recibido:', data.type);
 
-      if (data.type === 'register_extension') {
+      // ============================================
+      // 🚀 ORDEN DE EXTRACCIÓN DESDE DASHBOARD
+      // ============================================
+      if (data.type === 'extract_request') {
+        console.log('📤 Orden de extracción recibida desde dashboard');
+
+        wsClients.forEach(client => {
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify({ type: 'extract_request' }));
+          }
+        });
+      }
+
+      // ============================================
+      // REGISTROS
+      // ============================================
+      else if (data.type === 'register_extension') {
         console.log('✅ Extensión registrada');
+
       } else if (data.type === 'register_dashboard') {
         dashboardClients.add(ws);
         console.log('✅ Dashboard registrado');
-      } else if (data.type === 'schedule_data') {
-        // Guardar los datos en memoria
+      }
+
+      // ============================================
+      // DATOS DE HORARIOS DESDE EXTENSIÓN
+      // ============================================
+      else if (data.type === 'schedule_data') {
         const scheduleData = {
           id: uuidv4(),
           data: data.payload,
@@ -103,26 +124,27 @@ wss.on('connection', (ws) => {
 
         store.schedules.push(scheduleData);
 
-        // Mantener máximo de registros
+        // Limitar memoria
         if (store.schedules.length > store.maxSchedules) {
           store.schedules.shift();
         }
 
         console.log(`✅ Datos guardados. Total: ${store.schedules.length}`);
 
-        // Notificar a todos los dashboards
+        // Notificar dashboards
         broadcastToDashboards({
           type: 'schedule_saved',
           data: scheduleData
         });
 
-        // Responder a la extensión
+        // Confirmar a la extensión
         ws.send(JSON.stringify({
           type: 'schedule_saved',
           success: true,
           id: scheduleData.id
         }));
       }
+
     } catch (error) {
       console.error('❌ Error procesando mensaje:', error);
     }
@@ -145,12 +167,13 @@ wss.on('connection', (ws) => {
 
 function broadcastToDashboards(message) {
   const payload = JSON.stringify(message);
-  dashboardClients.forEach((client) => {
+  dashboardClients.forEach(client => {
     if (client.readyState === WebSocket.OPEN) {
       client.send(payload);
     }
   });
 }
+
 
 // ============================================
 // MANEJO DE ERRORES
