@@ -208,22 +208,23 @@ sendMessage(message) {
   }
   
   loadSchedules() {
-    console.log('[TIMP Dashboard] 📥 Cargando horarios...');
-    
-    fetch('/api/schedules/today')
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          this.schedules = data.data;
-          this.renderSchedules();
-          this.addLog(`✅ ${data.count} horarios cargados`, 'success');
-        }
-      })
-      .catch(error => {
-        console.error('[TIMP Dashboard] Error cargando horarios:', error);
-        this.addLog('❌ Error cargando horarios', 'error');
-      });
-  }
+  console.log('[TIMP Dashboard] 📥 Cargando horarios...');
+  
+  fetch('/api/schedules')   // ✅ RUTA CORRECTA
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        this.schedules = data.data;
+        this.renderSchedules();
+        this.addLog(`✅ ${data.count} horarios cargados`, 'success');
+      }
+    })
+    .catch(error => {
+      console.error('[TIMP Dashboard] Error cargando horarios:', error);
+      this.addLog('❌ Error cargando horarios', 'error');
+    });
+}
+
   
   handleScheduleUpdate(data) {
     // data es el scheduleEntry del servidor
