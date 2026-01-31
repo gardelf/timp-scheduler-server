@@ -6,34 +6,25 @@ const { v4: uuidv4 } = require('uuid');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ============================================
-// 🧠 MEMORIA RAM (COMO ANTES)
-// ============================================
+console.log("🔥 SERVIDOR RAM ARRANCANDO 🔥");
 
+// ================= MEMORIA RAM =================
 const store = {
   schedules: [],
   maxSchedules: 100
 };
 
-// TODOS los clientes WS entran aquí (como antes)
-const wsClients = new Set();        // extensiones
-const dashboardClients = new Set(); // dashboards
+// Clientes
+const wsClients = new Set();        // EXTENSIONES
+const dashboardClients = new Set();// DASHBOARDS
 
-// ============================================
-// MIDDLEWARE
-// ============================================
-
+// ================= MIDDLEWARE =================
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
-// ============================================
-// API REST
-// ============================================
-
+// ================= API =================
 app.get('/api/schedules', (req, res) => {
-  const limit = parseInt(req.query.limit) || 50;
-  const schedules = store.schedules.slice(-limit);
-  res.json({ success: true, count: schedules.length, data: schedules });
+  res.json({ success: true, count: store.schedules.length, data: store.schedules });
 });
 
 app.get('/api/stats', (req, res) => {
@@ -48,85 +39,62 @@ app.get('/api/stats', (req, res) => {
   });
 });
 
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok' });
-});
-
-// ============================================
-// SERVIDOR HTTP
-// ============================================
-
+// ================= HTTP =================
 const server = app.listen(PORT, () => {
-  console.log(`✅ Servidor iniciado en puerto ${PORT}`);
+  console.log(`🚀 Servidor en puerto ${PORT}`);
 });
 
-// ============================================
-// WEBSOCKET (VERSIÓN ORIGINAL FUNCIONANDO)
-// ============================================
-
+// ================= WEBSOCKET =================
 const wss = new WebSocket.Server({ server });
 
 wss.on('connection', (ws) => {
-  console.log('🔌 Cliente WebSocket conectado');
+  console.log('🔌 Nueva conexión WS');
 
-  // 🔥 COMO FUNCIONABA ANTES → TODA CONEXIÓN = EXTENSIÓN
+  // 🔥 COMO ANTES: toda conexión = extensión
   wsClients.add(ws);
 
-  ws.on('message', (message) => {
-    try {
-      const data = JSON.parse(message);
-      console.log('📨 Mensaje recibido:', data.type);
+  ws.on('message', (msg) => {
+    const data = JSON.parse(msg);
+    console.log('📨 WS mensaje:', data.type);
 
-      // Dashboard se registra (solo para recibir datos)
-      if (data.type === 'register_dashboard') {
-        dashboardClients.add(ws);
-        console.log('🖥️ Dashboard registrado');
-      }
+    if (data.type === 'register_dashboard') {
+      dashboardClients.add(ws);
+      wsClients.delete(ws); // este no es extensión
+      console.log('📊 Dashboard registrado');
+    }
 
-      // Dashboard pide extracción
-      if (data.type === 'extract_request') {
-        console.log('📤 Orden de extracción enviada a extensiones');
-        wsClients.forEach(client => {
-          if (client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify({ type: 'extract_request' }));
-          }
-        });
-      }
+    if (data.type === 'extract_request') {
+      console.log('📤 Orden extracción → extensión');
+      wsClients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(JSON.stringify({ type: 'extract_request' }));
+        }
+      });
+    }
 
-      // EXTENSIÓN ENVÍA HORARIOS (ESTO YA FUNCIONABA)
-      if (data.type === 'schedule_data') {
-        const scheduleData = {
-          id: uuidv4(),
-          payload: data.payload,
-          timestamp: new Date().toISOString()
-        };
+    if (data.type === 'schedule_data') {
+      const entry = {
+        id: uuidv4(),
+        payload: data.payload,
+        timestamp: new Date().toISOString()
+      };
 
-        store.schedules.push(scheduleData);
-        if (store.schedules.length > store.maxSchedules) store.schedules.shift();
+      store.schedules.push(entry);
+      console.log(`💾 Horario guardado. Total: ${store.schedules.length}`);
 
-        console.log(`💾 Horario guardado. Total: ${store.schedules.length}`);
-
-        // Avisar al dashboard
-        dashboardClients.forEach(client => {
-          if (client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify({
-              type: 'schedule_saved',
-              data: scheduleData
-            }));
-          }
-        });
-      }
-
-    } catch (err) {
-      console.error('❌ Error WS:', err);
+      dashboardClients.forEach(d => {
+        if (d.readyState === WebSocket.OPEN) {
+          d.send(JSON.stringify({ type: 'schedule_saved', data: entry }));
+        }
+      });
     }
   });
 
   ws.on('close', () => {
     wsClients.delete(ws);
     dashboardClients.delete(ws);
-    console.log('❌ Cliente desconectado');
+    console.log('❌ WS desconectado');
   });
 });
 
-console.log('🚀 SERVIDOR RAM ACTIVO');
+console.log('✅ SERVER RAM ACTIVO');
