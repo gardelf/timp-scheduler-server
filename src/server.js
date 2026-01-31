@@ -1,4 +1,4 @@
-const express = require('express');  
+const express = require('express');
 const WebSocket = require('ws');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
@@ -6,22 +6,31 @@ const { v4: uuidv4 } = require('uuid');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ================= RAM =================
+// =============================
+// 🧠 ALMACENAMIENTO EN MEMORIA
+// =============================
 const store = {
   schedules: [],
   maxSchedules: 100
 };
 
+// 👇 CLIENTES WEBSOCKET
 const wsClients = new Set();        // extensiones
 const dashboardClients = new Set(); // dashboards
 
-// ================= MIDDLEWARE =================
+// =============================
+// MIDDLEWARE
+// =============================
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
-// ================= API =================
+// =============================
+// API REST
+// =============================
 app.get('/api/schedules', (req, res) => {
-  res.json({ success: true, count: store.schedules.length, data: store.schedules });
+  const limit = parseInt(req.query.limit) || 50;
+  const schedules = store.schedules.slice(-limit);
+  res.json({ success: true, count: schedules.length, data: schedules });
 });
 
 app.get('/api/stats', (req, res) => {
@@ -36,12 +45,20 @@ app.get('/api/stats', (req, res) => {
   });
 });
 
-// ================= SERVER =================
-const server = app.listen(PORT, () => {
-  console.log(`✅ Servidor iniciado en puerto ${PORT}`);
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// ================= WEBSOCKET =================
+// =============================
+// SERVIDOR HTTP
+// =============================
+const server = app.listen(PORT, () => {
+  console.log(`🚀 Servidor TIMP listo en puerto ${PORT}`);
+});
+
+// =============================
+// WEBSOCKET
+// =============================
 const wss = new WebSocket.Server({ server });
 
 wss.on('connection', (ws) => {
@@ -52,18 +69,20 @@ wss.on('connection', (ws) => {
       const data = JSON.parse(message);
       console.log('📨 Mensaje recibido:', data.type);
 
+      // REGISTROS
       if (data.type === 'register_extension') {
         wsClients.add(ws);
         console.log('✅ Extensión registrada');
-      }
 
-      else if (data.type === 'register_dashboard') {
+      } else if (data.type === 'register_dashboard') {
         dashboardClients.add(ws);
         console.log('✅ Dashboard registrado');
       }
 
+      // ORDEN DESDE DASHBOARD
       else if (data.type === 'extract_request') {
         console.log('📤 Orden de extracción enviada a extensiones');
+
         wsClients.forEach(client => {
           if (client.readyState === WebSocket.OPEN) {
             client.send(JSON.stringify({ type: 'extract_request' }));
@@ -71,11 +90,11 @@ wss.on('connection', (ws) => {
         });
       }
 
-      // 🔥 AQUÍ ESTABA EL ERROR
+      // DATOS DESDE EXTENSIÓN
       else if (data.type === 'schedule_data') {
         const scheduleData = {
           id: uuidv4(),
-          data: data.data,   // ✅ ESTE ES EL CAMPO CORRECTO
+          payload: data.data, // 🔥 ESTA ES LA CLAVE
           timestamp: new Date().toISOString()
         };
 
@@ -84,13 +103,9 @@ wss.on('connection', (ws) => {
 
         console.log(`💾 Horario guardado. Total: ${store.schedules.length}`);
 
-        dashboardClients.forEach(client => {
-          if (client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify({
-              type: 'schedule_saved',
-              data: scheduleData
-            }));
-          }
+        broadcastToDashboards({
+          type: 'schedule_saved',
+          data: scheduleData
         });
       }
 
@@ -102,7 +117,18 @@ wss.on('connection', (ws) => {
   ws.on('close', () => {
     wsClients.delete(ws);
     dashboardClients.delete(ws);
+    console.log('❌ Cliente desconectado');
   });
 });
 
-console.log('🚀 Servidor TIMP listo');
+// =============================
+// UTIL
+// =============================
+function broadcastToDashboards(message) {
+  const payload = JSON.stringify(message);
+  dashboardClients.forEach(client => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(payload);
+    }
+  });
+}
