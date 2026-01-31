@@ -7,7 +7,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ============================================
-// 🧠 ALMACENAMIENTO EN MEMORIA RAM
+// 🧠 MEMORIA RAM (COMO ANTES)
 // ============================================
 
 const store = {
@@ -15,7 +15,7 @@ const store = {
   maxSchedules: 100
 };
 
-// 👇 CLIENTES WEBSOCKET (TIENEN QUE ESTAR ARRIBA)
+// TODOS los clientes WS entran aquí (como antes)
 const wsClients = new Set();        // extensiones
 const dashboardClients = new Set(); // dashboards
 
@@ -49,11 +49,7 @@ app.get('/api/stats', (req, res) => {
 });
 
 app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime()
-  });
+  res.json({ status: 'ok' });
 });
 
 // ============================================
@@ -65,7 +61,7 @@ const server = app.listen(PORT, () => {
 });
 
 // ============================================
-// WEBSOCKET
+// WEBSOCKET (VERSIÓN ORIGINAL FUNCIONANDO)
 // ============================================
 
 const wss = new WebSocket.Server({ server });
@@ -73,29 +69,23 @@ const wss = new WebSocket.Server({ server });
 wss.on('connection', (ws) => {
   console.log('🔌 Cliente WebSocket conectado');
 
+  // 🔥 COMO FUNCIONABA ANTES → TODA CONEXIÓN = EXTENSIÓN
+  wsClients.add(ws);
+
   ws.on('message', (message) => {
     try {
       const data = JSON.parse(message);
       console.log('📨 Mensaje recibido:', data.type);
 
-      // ========================================
-      // REGISTROS
-      // ========================================
-      if (data.type === 'register_extension') {
-        wsClients.add(ws);
-        console.log('✅ Extensión registrada');
-
-      } else if (data.type === 'register_dashboard') {
+      // Dashboard se registra (solo para recibir datos)
+      if (data.type === 'register_dashboard') {
         dashboardClients.add(ws);
-        console.log('✅ Dashboard registrado');
+        console.log('🖥️ Dashboard registrado');
       }
 
-      // ========================================
-      // ORDEN DE EXTRACCIÓN DESDE DASHBOARD
-      // ========================================
-      else if (data.type === 'extract_request') {
-        console.log('📤 Orden de extracción recibida');
-
+      // Dashboard pide extracción
+      if (data.type === 'extract_request') {
+        console.log('📤 Orden de extracción enviada a extensiones');
         wsClients.forEach(client => {
           if (client.readyState === WebSocket.OPEN) {
             client.send(JSON.stringify({ type: 'extract_request' }));
@@ -103,10 +93,8 @@ wss.on('connection', (ws) => {
         });
       }
 
-      // ========================================
-      // DATOS DE HORARIOS DESDE EXTENSIÓN
-      // ========================================
-      else if (data.type === 'schedule_data') {
+      // EXTENSIÓN ENVÍA HORARIOS (ESTO YA FUNCIONABA)
+      if (data.type === 'schedule_data') {
         const scheduleData = {
           id: uuidv4(),
           payload: data.payload,
@@ -118,14 +106,19 @@ wss.on('connection', (ws) => {
 
         console.log(`💾 Horario guardado. Total: ${store.schedules.length}`);
 
-        broadcastToDashboards({
-          type: 'schedule_saved',
-          data: scheduleData
+        // Avisar al dashboard
+        dashboardClients.forEach(client => {
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify({
+              type: 'schedule_saved',
+              data: scheduleData
+            }));
+          }
         });
       }
 
     } catch (err) {
-      console.error('❌ Error procesando mensaje:', err);
+      console.error('❌ Error WS:', err);
     }
   });
 
@@ -134,21 +127,6 @@ wss.on('connection', (ws) => {
     dashboardClients.delete(ws);
     console.log('❌ Cliente desconectado');
   });
-
-  ws.on('error', (err) => console.error('WebSocket error:', err));
 });
 
-// ============================================
-// FUNCIONES AUXILIARES
-// ============================================
-
-function broadcastToDashboards(message) {
-  const payload = JSON.stringify(message);
-  dashboardClients.forEach(client => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(payload);
-    }
-  });
-}
-
-console.log('🚀 Servidor TIMP listo');
+console.log('🚀 SERVIDOR RAM ACTIVO');
