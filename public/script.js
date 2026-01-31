@@ -30,66 +30,68 @@ class TimPScheduler {
     setInterval(() => this.loadStats(), 10000);
   }
   
-  // ============================================
-  // WebSocket
-  // ============================================
-  
-  connectWebSocket() {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws/dashboard`;
-    
-    console.log('[TIMP Dashboard] Conectando a WebSocket:', wsUrl);
-    
-    this.ws = new WebSocket(wsUrl);
-    
-    this.ws.onopen = () => {
-      console.log('[TIMP Dashboard] ✅ WebSocket conectado');
-      this.isConnected = true;
-      this.updateConnectionStatus(true);
-    };
-    
-    this.ws.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data);
-        console.log('[TIMP Dashboard] 📨 Mensaje recibido:', message.type);
-        
-        if (message.type === 'connected') {
-          this.clientId = message.clientId;
-          console.log('[TIMP Dashboard] Cliente ID:', this.clientId);
-        } else if (message.type === 'schedule_updated') {
-          console.log('[TIMP Dashboard] 📊 Horario actualizado');
-          this.handleScheduleUpdate(message.data);
-        }
-      } catch (error) {
-        console.error('[TIMP Dashboard] Error procesando mensaje:', error);
+ // ============================================
+// WebSocket
+// ============================================
+
+connectWebSocket() {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${protocol}//${window.location.host}`;   // ← CAMBIO AQUÍ
+
+  console.log('[TIMP Dashboard] Conectando a WebSocket:', wsUrl);
+
+  this.ws = new WebSocket(wsUrl);
+
+  this.ws.onopen = () => {
+    console.log('[TIMP Dashboard] ✅ WebSocket conectado');
+    this.isConnected = true;
+    this.updateConnectionStatus(true);
+
+    // 🔥 REGISTRAR DASHBOARD EN SERVIDOR RAM
+    this.ws.send(JSON.stringify({ type: 'register_dashboard' }));
+  };
+
+  this.ws.onmessage = (event) => {
+    try {
+      const message = JSON.parse(event.data);
+      console.log('[TIMP Dashboard] 📨 Mensaje recibido:', message.type);
+
+      // ESTE SERVIDOR ENVÍA schedule_saved
+      if (message.type === 'schedule_saved') {
+        console.log('[TIMP Dashboard] 📊 Horario guardado en servidor');
+        this.handleScheduleUpdate(message.data);
       }
-    };
-    
-    this.ws.onerror = (error) => {
-      console.error('[TIMP Dashboard] ❌ Error WebSocket:', error);
-      this.isConnected = false;
-      this.updateConnectionStatus(false);
-    };
-    
-    this.ws.onclose = () => {
-      console.log('[TIMP Dashboard] ❌ WebSocket desconectado');
-      this.isConnected = false;
-      this.updateConnectionStatus(false);
-      
-      // Reintentar conexión cada 3 segundos
-      setTimeout(() => this.connectWebSocket(), 3000);
-    };
-  }
-  
-  sendMessage(message) {
-    if (this.isConnected && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(message));
-      return true;
-    } else {
-      console.error('[TIMP Dashboard] WebSocket no está conectado');
-      return false;
+    } catch (error) {
+      console.error('[TIMP Dashboard] Error procesando mensaje:', error);
     }
+  };
+
+  this.ws.onerror = (error) => {
+    console.error('[TIMP Dashboard] ❌ Error WebSocket:', error);
+    this.isConnected = false;
+    this.updateConnectionStatus(false);
+  };
+
+  this.ws.onclose = () => {
+    console.log('[TIMP Dashboard] ❌ WebSocket desconectado');
+    this.isConnected = false;
+    this.updateConnectionStatus(false);
+
+    // Reintentar conexión cada 3 segundos
+    setTimeout(() => this.connectWebSocket(), 3000);
+  };
+}
+
+sendMessage(message) {
+  if (this.isConnected && this.ws.readyState === WebSocket.OPEN) {
+    this.ws.send(JSON.stringify(message));
+    return true;
+  } else {
+    console.error('[TIMP Dashboard] WebSocket no está conectado');
+    return false;
   }
+}
+
   
   // ============================================
   // Event Listeners
