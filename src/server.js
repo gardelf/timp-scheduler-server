@@ -1,20 +1,23 @@
 const express = require('express');
 const WebSocket = require('ws');
 const path = require('path');
-const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ============================================
-// ALMACENAMIENTO EN MEMORIA RAM
+// 🧠 ALMACENAMIENTO EN MEMORIA RAM
 // ============================================
 
 const store = {
   schedules: [],
   maxSchedules: 100
 };
+
+// 👇 CLIENTES WEBSOCKET (TIENEN QUE ESTAR ARRIBA)
+const wsClients = new Set();        // extensiones
+const dashboardClients = new Set(); // dashboards
 
 // ============================================
 // MIDDLEWARE
@@ -24,21 +27,15 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
 // ============================================
-// RUTAS API
+// API REST
 // ============================================
 
-// GET /api/schedules - Obtener todos los horarios
 app.get('/api/schedules', (req, res) => {
   const limit = parseInt(req.query.limit) || 50;
   const schedules = store.schedules.slice(-limit);
-  res.json({
-    success: true,
-    count: schedules.length,
-    data: schedules
-  });
+  res.json({ success: true, count: schedules.length, data: schedules });
 });
 
-// GET /api/stats - Obtener estadísticas
 app.get('/api/stats', (req, res) => {
   res.json({
     success: true,
@@ -51,7 +48,6 @@ app.get('/api/stats', (req, res) => {
   });
 });
 
-// GET /api/health - Health check
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
@@ -66,7 +62,6 @@ app.get('/api/health', (req, res) => {
 
 const server = app.listen(PORT, () => {
   console.log(`✅ Servidor iniciado en puerto ${PORT}`);
-  console.log(`📊 URL: http://localhost:${PORT}`);
 });
 
 // ============================================
@@ -74,23 +69,32 @@ const server = app.listen(PORT, () => {
 // ============================================
 
 const wss = new WebSocket.Server({ server });
-const wsClients = new Set();        // extensiones
-const dashboardClients = new Set(); // dashboards
 
 wss.on('connection', (ws) => {
-  console.log('✅ Nuevo cliente WebSocket conectado');
-  wsClients.add(ws);
+  console.log('🔌 Cliente WebSocket conectado');
 
   ws.on('message', (message) => {
     try {
       const data = JSON.parse(message);
       console.log('📨 Mensaje recibido:', data.type);
 
-      // ============================================
-      // 🚀 ORDEN DE EXTRACCIÓN DESDE DASHBOARD
-      // ============================================
-      if (data.type === 'extract_request') {
-        console.log('📤 Orden de extracción recibida desde dashboard');
+      // ========================================
+      // REGISTROS
+      // ========================================
+      if (data.type === 'register_extension') {
+        wsClients.add(ws);
+        console.log('✅ Extensión registrada');
+
+      } else if (data.type === 'register_dashboard') {
+        dashboardClients.add(ws);
+        console.log('✅ Dashboard registrado');
+      }
+
+      // ========================================
+      // ORDEN DE EXTRACCIÓN DESDE DASHBOARD
+      // ========================================
+      else if (data.type === 'extract_request') {
+        console.log('📤 Orden de extracción recibida');
 
         wsClients.forEach(client => {
           if (client.readyState === WebSocket.OPEN) {
@@ -99,54 +103,29 @@ wss.on('connection', (ws) => {
         });
       }
 
-      // ============================================
-      // REGISTROS
-      // ============================================
-      else if (data.type === 'register_extension') {
-        console.log('✅ Extensión registrada');
-
-      } else if (data.type === 'register_dashboard') {
-        dashboardClients.add(ws);
-        console.log('✅ Dashboard registrado');
-      }
-
-      // ============================================
+      // ========================================
       // DATOS DE HORARIOS DESDE EXTENSIÓN
-      // ============================================
+      // ========================================
       else if (data.type === 'schedule_data') {
         const scheduleData = {
           id: uuidv4(),
-          data: data.payload,
-          timestamp: new Date().toISOString(),
-          source: data.source || 'extension',
-          sourceId: data.sourceId || uuidv4()
+          payload: data.payload,
+          timestamp: new Date().toISOString()
         };
 
         store.schedules.push(scheduleData);
+        if (store.schedules.length > store.maxSchedules) store.schedules.shift();
 
-        // Limitar memoria
-        if (store.schedules.length > store.maxSchedules) {
-          store.schedules.shift();
-        }
+        console.log(`💾 Horario guardado. Total: ${store.schedules.length}`);
 
-        console.log(`✅ Datos guardados. Total: ${store.schedules.length}`);
-
-        // Notificar dashboards
         broadcastToDashboards({
           type: 'schedule_saved',
           data: scheduleData
         });
-
-        // Confirmar a la extensión
-        ws.send(JSON.stringify({
-          type: 'schedule_saved',
-          success: true,
-          id: scheduleData.id
-        }));
       }
 
-    } catch (error) {
-      console.error('❌ Error procesando mensaje:', error);
+    } catch (err) {
+      console.error('❌ Error procesando mensaje:', err);
     }
   });
 
@@ -156,9 +135,7 @@ wss.on('connection', (ws) => {
     console.log('❌ Cliente desconectado');
   });
 
-  ws.on('error', (error) => {
-    console.error('❌ Error WebSocket:', error);
-  });
+  ws.on('error', (err) => console.error('WebSocket error:', err));
 });
 
 // ============================================
@@ -174,17 +151,4 @@ function broadcastToDashboards(message) {
   });
 }
 
-
-// ============================================
-// MANEJO DE ERRORES
-// ============================================
-
-process.on('uncaughtException', (error) => {
-  console.error('❌ Error no capturado:', error);
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ Promesa rechazada no manejada:', reason);
-});
-
-console.log('🚀 Servidor TIMP iniciado correctamente');
+console.log('🚀 Servidor TIMP listo');
