@@ -262,68 +262,68 @@ sendMessage(message) {
   }
   
   renderSchedules() {
-    const tbody = document.getElementById('scheduleTableBody');
-    if (!tbody) return;
-    
-    if (this.schedules.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No hay datos</td></tr>';
-      return;
-    }
-    
-    tbody.innerHTML = this.schedules.map(schedule => `
+  const tbody = document.getElementById('scheduleTableBody');
+  if (!tbody) return;
+
+  if (this.schedules.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No hay datos</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = this.schedules.map(schedule => {
+    const clases = schedule.data || [];
+    const date = new Date(schedule.timestamp).toLocaleDateString('es-ES');
+    const time = new Date(schedule.timestamp).toLocaleTimeString('es-ES');
+
+    return `
       <tr>
-        <td>${schedule.date_extracted}</td>
-        <td>${schedule.clases ? JSON.parse(schedule.clases).length : 0} clases</td>
-        <td>${new Date(schedule.timestamp).toLocaleTimeString('es-ES')}</td>
+        <td>${date}</td>
+        <td>${clases.length} clases</td>
+        <td>${time}</td>
         <td>
           <button class="btn btn-small" onclick="app.showDetails('${schedule.id}')">Ver</button>
         </td>
       </tr>
-    `).join('');
-    
-    // Mostrar último horario
-    if (this.schedules.length > 0) {
-      const latest = this.schedules[0];
-      const clases = JSON.parse(latest.clases);
-      
-      const container = document.getElementById('latestScheduleContainer');
-      if (container) {
-        container.innerHTML = `
-          <div class="schedule-details">
-            <p><strong>Fecha:</strong> ${latest.date_extracted}</p>
-            <p><strong>Clases:</strong> ${clases.length}</p>
-            <p><strong>Hora:</strong> ${new Date(latest.timestamp).toLocaleTimeString('es-ES')}</p>
-            <p><strong>Estado:</strong> ${latest.validation_status}</p>
-          </div>
-        `;
-      }
-    }
+    `;
+  }).join('');
+
+  // Mostrar último
+  const latest = this.schedules[this.schedules.length - 1];
+  const clases = latest.data || [];
+
+  const container = document.getElementById('latestScheduleContainer');
+  if (container) {
+    container.innerHTML = `
+      <div class="schedule-details">
+        <p><strong>Fecha:</strong> ${new Date(latest.timestamp).toLocaleDateString('es-ES')}</p>
+        <p><strong>Clases:</strong> ${clases.length}</p>
+        <p><strong>Hora:</strong> ${new Date(latest.timestamp).toLocaleTimeString('es-ES')}</p>
+      </div>
+    `;
   }
+}
+
   
   showDetails(scheduleId) {
-    const schedule = this.schedules.find(s => s.id === scheduleId);
-    if (!schedule) return;
-    
-    const clases = JSON.parse(schedule.clases);
-    const modalBody = document.getElementById('modalBody');
-    
-    if (modalBody) {
-      modalBody.innerHTML = `
-        <div class="details">
-          <p><strong>ID:</strong> ${schedule.id}</p>
-          <p><strong>Fecha Extraída:</strong> ${schedule.date_extracted}</p>
-          <p><strong>Fecha Confirmada:</strong> ${schedule.date_confirmed}</p>
-          <p><strong>Timestamp:</strong> ${schedule.timestamp}</p>
-          <p><strong>Estado:</strong> ${schedule.validation_status}</p>
-          <p><strong>Fuente:</strong> ${schedule.source}</p>
-          <h3>Clases (${clases.length})</h3>
-          <pre>${JSON.stringify(clases, null, 2)}</pre>
-        </div>
-      `;
-      
-      document.getElementById('detailsModal').style.display = 'block';
-    }
+  const schedule = this.schedules.find(s => s.id === scheduleId);
+  if (!schedule) return;
+
+  const clases = schedule.data || [];
+  const modalBody = document.getElementById('modalBody');
+
+  if (modalBody) {
+    modalBody.innerHTML = `
+      <div class="details">
+        <p><strong>ID:</strong> ${schedule.id}</p>
+        <p><strong>Timestamp:</strong> ${schedule.timestamp}</p>
+        <h3>Clases (${clases.length})</h3>
+        <pre>${JSON.stringify(clases, null, 2)}</pre>
+      </div>
+    `;
+    document.getElementById('detailsModal').style.display = 'block';
   }
+}
+
   
   closeModal() {
     const modal = document.getElementById('detailsModal');
